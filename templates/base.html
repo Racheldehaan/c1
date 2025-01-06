@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Language Level Tool</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .container {
+            background-color: white;
+            padding: 20px;
+            margin-top: 10px;
+            box-shadow: 1px 4px 6px rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+        }
+        textarea {
+            width: 100%;
+            height: 600px;
+            border: 1px solid #000;
+            border-radius: 5px;
+            padding: 10px;
+            font-size: 14px;
+            resize: none;
+            box-sizing: border-box;
+        }
+        .suggestion-section {
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 10px;
+            background-color: #f9f9f9;
+            height: 600px;
+            overflow-y: auto;
+        }
+        .suggestion-section ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+        .suggestion-section ul li {
+            margin-bottom: 10px;
+        }
+        .button-wrapper {
+            margin-top: 20px;
+        }
+        .button-wrapper button {
+            padding: 10px 20px;
+            font-size: 16px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .button-wrapper button:hover {
+            background-color: #45a049;
+        }
+        .title {
+            text-align: center;
+            font-size: 30px;
+            font-weight: bold;
+            margin-bottom: 30px;
+            letter-spacing: 2px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="row mb-4">
+            <div class="col-sm text-start">
+                <small>Version 1.0</small>
+            </div>
+            <div class="col-sm text-center title">
+                Language Level Tool
+            </div>
+            <div class="col-sm text-end">
+                <img src="{{ url_for('static', filename='images/logo-gemeente-amsterdam.png') }}" style="width: 200px;" alt="Logo">
+            </div>
+        </div>
+
+        <form method="POST" action="/">
+            <div class="row">
+                <div class="col-md-6">
+                    <h4>Input</h4>
+                    <textarea id="text-input" name="text-input" placeholder="Enter text here..."></textarea>
+                </div>
+                <div class="col-md-6">
+                    <h4>Suggestions</h4>
+                    <div class="suggestion-section">
+                        <div id="suggestions-container">
+                            <ul id="suggestions-list">
+                                <li>No suggestions yet. Enter some text and click "Check now".</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="button-wrapper text-left">
+                        <input type="file" id="upload-file" class="form-control mb-3" accept=".txt">
+                        <button type="button" id="check-button">Check now</button>
+                    </div>
+                </div>
+                <div class="col-md-6" id="Language_level" style="display: none; text-align: right;">
+                    <h4>Language Level:</h4>
+                    <p>B2 ✅</p>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.getElementById('upload-file').addEventListener('change', function(event) {
+            const file = event.target.files[0];
+            if (file && file.type === 'text/plain') {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    document.getElementById('text-input').value = e.target.result;
+                };
+                reader.readAsText(file);
+            } else {
+                alert("Please upload a valid .txt file.");
+            }
+        });
+
+        document.getElementById('check-button').addEventListener('click', function() {
+            const suggestionsList = document.getElementById('suggestions-list');
+            suggestionsList.innerHTML = ''; 
+
+            const newSuggestions = [
+                "\"Ontbinding\"  --- Suggestie: --- Beëindiging", 
+                "\"Ontruiming\"   --- Suggestie: --- Uithuiszetting"
+            ];
+
+            newSuggestions.forEach(suggestion => {
+                const listItem = document.createElement('li');
+                listItem.textContent = suggestion;
+                suggestionsList.appendChild(listItem);
+            });
+
+            const languageLevel = document.getElementById('Language_level');
+            languageLevel.style.display = 'block';
+        });
+    </script>
+</body>
+</html>
