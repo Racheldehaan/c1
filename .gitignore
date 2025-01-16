@@ -3,3 +3,5 @@ logs/
 runs/
 results/
 language_level_model/
+checkpoints/
+tmp_trainer/
