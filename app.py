@@ -5,112 +5,153 @@ from huggingface_hub import login
 import torch
 import string
 
-app = Flask(__name__, template_folder=os.path.join(os.path.dirname(__file__), 'templates'))
-app.config['DEBUG'] = True
+import pandas as pd
+from datasets import Dataset, load_dataset
+from setfit import SetFitModel, Trainer, TrainingArguments, sample_dataset
+from llama_cpp import Llama
+import json
 
-# Device configuration
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+app = Flask(
+    __name__, template_folder=os.path.join(os.path.dirname(__file__), "templates")
+)
+app.config["DEBUG"] = True
 
-# Login to Hugging Face
-login("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")
+# Load the saved model
+model = SetFitModel.from_pretrained("language_level_model")
+device = torch.device("cpu")  # Force using CPU
+model.to(device)  # Move the model to the CPU
 
-# Model ID
-model_id = "BramVanroy/GEITje-7B-ultra"
 
-# Directory to save/load the model and tokenizer
-cache_dir = "./model_cache"
+def predict_language_level(texts):
+    preds = model.predict(texts)
+    return preds
 
-# Load or download the model and tokenizer
-tokenizer = AutoTokenizer.from_pretrained(model_id, use_fast=True, cache_dir=cache_dir)
-model = AutoModelForCausalLM.from_pretrained(model_id, torch_dtype=torch.bfloat16, cache_dir=cache_dir)
 
-# Save model and tokenizer locally for future reuse
-tokenizer.save_pretrained(cache_dir)
-model.save_pretrained(cache_dir)
-
-pipe = pipeline(
-    "text-generation",
-    model=model,
-    tokenizer=tokenizer,
-    device="cpu",
-    model_kwargs={"torch_dtype": torch.float16},
-    max_length=200,
+llm = Llama.from_pretrained(
+    repo_id="mradermacher/GEITje-7B-ultra-i1-GGUF",
+    filename="GEITje-7B-ultra.i1-Q5_K_M.gguf",
+    n_ctx=32768,
 )
 
 messages = [
-        # {"role": "system", "content": """Jij bent een expert in de Nederlandse taal, je krijgt een stukje text waarvan je streng het taalnivea moet bepalen. Zeg alleen welk niveau het is, dus bijvoorbeeld B1 of C1. Zeg niet waarom het zo is, alleen het niveau.
-        # Taalniveau B1 (normaal)
-        # Taalniveau B1 is het normale taalniveau in Nederland. Wanneer je taalniveau B1 beheerst, begrijp je teksten die grotendeels bestaan uit woorden en zinnen die je vaak hoort en waar je bekend mee bent. Zoals zaken die je vaak tegenkomt op je werk of school. Ook kan je je eigen mening geven en verantwoorden of een verhaal vertellen over bekende zaken en onderwerpen.
-        # """
-        # },
-        {"role": "system", "content": """
-        Bepaal het taalniveau van deze tekst en als het niveau moeilijker dan B1 is, geef suggesties zodat het taalniveau B1 wordt:
+    {
+        "role": "system",
+        "content": """
+            Jij bent een expert in de Nederlandse taal en geeft alleen antwoord in json format zonder extra uitleg erbij. Dit is wat je weet over taalniveaus in het Nederlands op volgorde van makkelijk naar moeilijk plus een uitleg:
+            A1: Iemand die (alleen) taalniveau A1 begrijpt en spreekt, is een beginnend taalgebruiker. Hij begrijpt eenvoudige woorden en namen en heel korte zinnen.
+            A2: A2 is ook heel eenvoudig. Maar de zinnen zijn al iets langer. Iemand met dit niveau begrijpt de boodschap van korte, eenvoudige teksten. Die teksten moeten duidelijk zijn en gaan over de eigen omgeving. Als je schrijft voor laaggeletterden, is dit niveau geschikt.
+            B1: Het niveau dat de meeste Nederlanders begrijpen. B1 draait om eenvoudige en duidelijke taal. Mensen met dit taalniveau begrijpen de meeste teksten die over veelvoorkomende onderwerpen gaan. Het lijkt een beetje op spreektaal. Een van de kenmerken van taalniveau B1 en de onderliggende niveaus, is een duidelijke tekststructuur.
+            B2: Iemand die taalniveau B2 begrijpt, snapt ingewikkeldere teksten. Al helemaal als het gaat over een (wat moeilijker) onderwerp dat hij in zijn eigen beroep of interessegebied tegenkomt.
+            C1: Heeft iemand taalniveau C1, dan begrijpt hij moeilijke, lange teksten, ook als die abstract (vaag) zijn. Hij begrijpt vaktaal, uitdrukkingen, ouderwetse woorden en moeilijke woorden. En hij kan taal zelf goed inzetten om iets uit te leggen.
+            C2: Dit is de moeilijkste van alle taalniveaus. Iemand die C2 begrijpt, begrijpt eigenlijk alles wat in het Nederlands wordt gezegd of geschreven.
 
-        Begin text:
-        {text}
-        Einde text.
+            Geef het antwoord in het volgende formaat:
+            {"suggesties" : None als er geen suggesties zijn, anders een lijst met minimaal lengte 1 en geen maximale lengte met de suggesties in het volgende formaat: [
+              {
+              "zin uit de tekst die aangepast moet worden": "-de zin-",
+              "wat het zou moeten worden": "-vereenvoudigde zin-"
+              },
+              {
+              "zin uit de tekst die aangepast moet worden": "-de zin-",
+              "wat het zou moeten worden": "-vereenvoudigde zin-"
+              },
+              {
+              "zin uit de tekst die aangepast moet worden": "-de zin-",
+              "wat het zou moeten worden": "-vereenvoudigde zin-"
+              },
+              ....
 
-        Geef het antwoord in het volgende formaat:
-        { "taalniveau" : ¨-vul in taalniveau, gebruik maximaal 2 characters-¨,
-        ¨suggesties" : None als er geen suggesties zijn, anders: { 
-            "-originele zin-": "-vereenvoudigde zin-", 
-            "-andere originele zin-": "-andere vereenvoudigde zin-" 
+
             }
-        }
+        """,
+    },
+    {
+        "role": "user",
+        "content": """
+        Deze tekst heeft een moeilijker taalniveau dan B1, geef suggesties zodat het taalniveau B1 wordt:
 
-        Voorbeeld output:
-        {
-        "taalniveau": "B2",
-        "suggesties": {
-        "-De oude man liep langzaam door de straat, zijn rug gebogen van de jaren-": "-De oude man liep langzaam, zijn rug gebogen van de jaren.",
-        "-De minister verklaarde dat er aanzienlijke veranderingen nodig zijn om de situatie te verbeteren-": "-De minister zei dat er veel veranderingen nodig zijn om de situatie beter te maken."
-        }
-        }
-        """}
-    ]
+        {text}
+        """,
+    },
+]
 
-@app.route('/', methods=['GET'])
+
+@app.route("/", methods=["GET"])
 def home():
-    return render_template('base.html')
+    return render_template("base.html")
+
 
 # @app.route('/output', methods=['POST'])
 # def output():
 #     text_input = request.form.get('text-input')
 #     suggestions = []
-    
+
 #     # Hier komt de logica voor het maken van suggesties op basis van de input
 #     if text_input:
 #         suggestions = [f"• {x}" for x in text_input]
 #         language_level = "B2"
-    
+
 #     else:
 #         language_level = None
-    
+
 #     return render_template('base.html', suggestions=suggestions, language_level=language_level)
 
 
-@app.route('/output', methods=['POST'])
+@app.route("/output", methods=["POST"])
 def output():
-    text_input = request.form.get('text-input')
+    text_input = request.form.get("text-input")
     suggestions = []
     language_level = None
 
     if text_input:
-        # Update user message with the input text
-        
-        user_message = messages[0].copy()
-        user_message["content"] = user_message["content"].replace("{text}", text_input)
-        messages[0] = user_message
 
-        # Get language level from model response
-        pipe.generation_config.pad_token_id = tokenizer.eos_token_id
-        outputs = pipe(messages, max_new_tokens=200)
-        language_level = outputs[0]['generated_text'][-1]['content'].strip()
+        predicted_levels = predict_language_level([text_input])
 
-        # TO DO: suggestions
-        suggestions = [f"• {x}" for x in text_input]
+        if predicted_levels[0] in ["B2", "C1", "C2"]:
 
-    return render_template('base.html', suggestions=suggestions, language_level=language_level)
+            # Update user message with the input text
+
+            user_message = messages[1].copy()
+            user_message["content"] = user_message["content"].replace(
+                "{text}", text_input
+            )
+            messages[1] = user_message
+
+            suggestions = llm.create_chat_completion(
+                messages=messages,
+                temperature=0.4,
+                response_format={
+                    "type": "json_object",
+                    "schema": {
+                        "type": "object",
+                        "properties": {
+                            "suggesties": {
+                                "type": ["array", "null"],
+                                "items": {
+                                    "type": "object",
+                                    "properties": {
+                                        "zin uit de tekst die aangepast moet worden": {
+                                            "type": "string"
+                                        },
+                                        "wat het zou moeten worden": {"type": "string"},
+                                    },
+                                    "required": [
+                                        "zin uit de tekst die aangepast moet worden",
+                                        "wat het zou moeten worden",
+                                    ],
+                                },
+                            },
+                        },
+                        "required": ["taalniveau"],
+                    },
+                },
+            )
+
+    suggest = json.loads(suggestions['choices'][0]['message']['content'])
+
+    return render_template(
+        "base.html", suggestions=suggest['suggesties'], language_level=predicted_levels[0]
+    )
 
 
 if __name__ == "__main__":

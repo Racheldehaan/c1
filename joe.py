@@ -9,8 +9,8 @@ from llama_cpp import Llama
 # )
 
 llm = Llama.from_pretrained(
-	repo_id="mradermacher/GEITje-7B-ultra-i1-GGUF",
-	filename="GEITje-7B-ultra.i1-Q4_K_M.gguf",
+    repo_id="mradermacher/GEITje-7B-ultra-i1-GGUF",
+    filename="GEITje-7B-ultra.i1-Q4_K_M.gguf",
 )
 
 text = input()
@@ -24,14 +24,16 @@ messages = [
             Ook weet je dat het bij taalniveau B2 het je geen moeite om spontaan deel te nemen aan een gesprek. Ben je bekend met het onderwerp? Dan kan je meedoen aan een discussie en je standpunten duidelijk maken. Je begrijpt de kern van moeilijke teksten en kan zelf ook gedetailleerde teksten schrijven en spreken.
             Ook weet je dat het bij taalniveai C1 je lange en moeilijke teksten begrijpen. Zelfs als er onduidelijke verbindingen worden gelegd. Ook literaire teksten begrijp je. Je kan jezelf makkelijk uitdrukken en gedetailleerde omschrijvingen geven over lastige onderwerpen. De taal zet je flexibel in op het werk en voor sociale doeleinden.
             Ook weet je dat je bij C2 elke tekst kan gebruiken.
-        """
+        """,
     },
-
-    {"role": "user", "content": f"""
+    {
+        "role": "user",
+        "content": f"""
         Bepaal het taalniveau van deze tekst en als het niveau moeilijker dan B1 is, geef suggesties zodat het taalniveau B1 wordt:
 
         {text}
-        """}
+        """,
+    },
 ]
 
 output = llm.create_chat_completion(

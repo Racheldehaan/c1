@@ -15,11 +15,10 @@ from llama_cpp import Llama
 # )
 
 llm = Llama.from_pretrained(
-	repo_id="mradermacher/GEITje-7B-ultra-i1-GGUF",
-	filename="GEITje-7B-ultra.i1-Q5_K_M.gguf",
-    n_ctx=32768
+    repo_id="mradermacher/GEITje-7B-ultra-i1-GGUF",
+    filename="GEITje-7B-ultra.i1-Q5_K_M.gguf",
+    n_ctx=32768,
 )
-
 
 
 text = input()
@@ -55,14 +54,16 @@ messages = [
 
 
             }
-        """
+        """,
     },
-
-    {"role": "user", "content": f"""
+    {
+        "role": "user",
+        "content": f"""
         Bepaal het taalniveau van de hierop volgende tekst en als het niveau moeilijker dan B1 is, geef suggesties zodat het taalniveau B1 wordt:
 
         {text}
-        """}
+        """,
+    },
 ]
 
 output = llm.create_chat_completion(
@@ -73,30 +74,27 @@ output = llm.create_chat_completion(
         "schema": {
             "type": "object",
             "properties": {
-            "taalniveau": {
-                "type": "string",
-                "maxLength": 2 
-            },
-            "suggesties": {
-                "type": ["array", "null"],
-                "items": {
-                "type": "object",
-                "properties": {
-                    "zin uit de tekst die aangepast moet worden": {
-                    "type": "string"
+                "taalniveau": {"type": "string", "maxLength": 2},
+                "suggesties": {
+                    "type": ["array", "null"],
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "zin uit de tekst die aangepast moet worden": {
+                                "type": "string"
+                            },
+                            "wat het zou moeten worden": {"type": "string"},
+                        },
+                        "required": [
+                            "zin uit de tekst die aangepast moet worden",
+                            "wat het zou moeten worden",
+                        ],
                     },
-                    "wat het zou moeten worden": {
-                    "type": "string"
-                    }
                 },
-                "required": ["zin uit de tekst die aangepast moet worden", "wat het zou moeten worden"]
-                }
-            }
             },
-            "required": ["taalniveau"]
-        }
-        }
-
+            "required": ["taalniveau"],
+        },
+    },
 )
 
 print(output)
