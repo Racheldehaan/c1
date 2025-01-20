@@ -1,24 +1,30 @@
-from flask import Flask, render_template, request
-import os
-from transformers import pipeline, AutoTokenizer, AutoModelForCausalLM
-from huggingface_hub import login
 import torch
 import string
-
+import os
 import pandas as pd
+from flask import Flask, render_template, request
+import json
+
+from transformers import pipeline, AutoTokenizer, AutoModelForCausalLM
+from huggingface_hub import login
 from datasets import Dataset, load_dataset
 from setfit import SetFitModel, Trainer, TrainingArguments, sample_dataset
 from llama_cpp import Llama
-import json
 
 app = Flask(
-    __name__, template_folder=os.path.join(os.path.dirname(__file__), "templates")
+    __name__,
+    template_folder=os.path.join(os.path.dirname(__file__), "templates")
 )
+
 app.config["DEBUG"] = True
 
 # Load the saved model
 model = SetFitModel.from_pretrained("language_level_model")
-device = torch.device("cpu")  # Force using CPU
+
+# Select device: GPU if available, otherwise CPU
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+print(f"Using device: {device}")
+# device = torch.device("cpu")  # Force using CPU
 model.to(device)  # Move the model to the CPU
 
 
@@ -80,79 +86,83 @@ messages = [
 def home():
     return render_template("base.html")
 
-
-# @app.route('/output', methods=['POST'])
-# def output():
-#     text_input = request.form.get('text-input')
-#     suggestions = []
-
-#     # Hier komt de logica voor het maken van suggesties op basis van de input
-#     if text_input:
-#         suggestions = [f"• {x}" for x in text_input]
-#         language_level = "B2"
-
-#     else:
-#         language_level = None
-
-#     return render_template('base.html', suggestions=suggestions, language_level=language_level)
-
-
 @app.route("/output", methods=["POST"])
 def output():
     text_input = request.form.get("text-input")
     suggestions = []
-    language_level = None
 
     if text_input:
-
+        # Voer taalniveauvoorspelling uit
         predicted_levels = predict_language_level([text_input])
 
         if predicted_levels[0] in ["B2", "C1", "C2"]:
+            # Kopieer de standaard berichten om wijzigingen te vermijden
+            local_messages = [
+                {
+                    "role": msg["role"],
+                    "content": msg["content"].replace("{text}", text_input) if "{text}" in msg["content"] else msg["content"]
+                }
+                for msg in messages
+            ]
 
-            # Update user message with the input text
-
-            user_message = messages[1].copy()
-            user_message["content"] = user_message["content"].replace(
-                "{text}", text_input
-            )
-            messages[1] = user_message
-
-            suggestions = llm.create_chat_completion(
-                messages=messages,
-                temperature=0.4,
-                response_format={
-                    "type": "json_object",
-                    "schema": {
-                        "type": "object",
-                        "properties": {
-                            "suggesties": {
-                                "type": ["array", "null"],
-                                "items": {
-                                    "type": "object",
-                                    "properties": {
-                                        "zin uit de tekst die aangepast moet worden": {
-                                            "type": "string"
+            # Voer de LLM aanroep uit
+            try:
+                completion = llm.create_chat_completion(
+                    messages=local_messages,
+                    temperature=0.4,
+                    response_format={
+                        "type": "json_object",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "suggesties": {
+                                    "type": ["array", "null"],
+                                    "items": {
+                                        "type": "object",
+                                        "properties": {
+                                            "zin uit de tekst die aangepast moet worden": {"type": "string"},
+                                            "wat het zou moeten worden": {"type": "string"},
                                         },
-                                        "wat het zou moeten worden": {"type": "string"},
+                                        "required": [
+                                            "zin uit de tekst die aangepast moet worden",
+                                            "wat het zou moeten worden",
+                                        ],
                                     },
-                                    "required": [
-                                        "zin uit de tekst die aangepast moet worden",
-                                        "wat het zou moeten worden",
-                                    ],
                                 },
                             },
                         },
-                        "required": ["taalniveau"],
                     },
-                },
-            )
+                )
 
-    suggest = json.loads(suggestions['choices'][0]['message']['content'])
+                # Valideer of er een geldig antwoord is
+                if completion is None:
+                    return "Error: No response from LLM model", 500
 
-    return render_template(
-        "base.html", suggestions=suggest['suggesties'], language_level=predicted_levels[0]
-    )
+                # Parse het resultaat
+                suggest = json.loads(completion['choices'][0]['message']['content'])
 
+                # Format de suggesties
+                formatted_suggestions = [
+                    {
+                        "id": i,
+                        "original": item["zin uit de tekst die aangepast moet worden"],
+                        "new": item["wat het zou moeten worden"]
+                    }
+                    for i, item in enumerate(suggest['suggesties'], start=1)
+                ]
+
+                # Render nieuwe suggesties
+                return render_template(
+                    "base.html",
+                    suggestions=formatted_suggestions,
+                    language_level=predicted_levels[0],
+                )
+
+            except Exception as e:
+                return f"Error processing LLM response: {str(e)}", 500
+
+    # Geen tekst ingevoerd of niets te verwerken
+    return render_template("base.html", suggestions=[], language_level=None)
 
 if __name__ == "__main__":
     app.run(debug=True)
