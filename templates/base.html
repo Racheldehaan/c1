@@ -41,6 +41,16 @@
         .suggestion-section ul li {
             margin-bottom: 10px;
         }
+        .bubble {
+            padding: 10px;
+            margin-bottom: 10px;
+            background-color: #f0f0f0;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .bubble:hover {
+            background-color: #e0e0e0;
+        }
         .button-wrapper {
             margin-top: 20px;
         }
@@ -63,28 +73,63 @@
             margin-bottom: 30px;
             letter-spacing: 2px;
         }
+            /* Loader container in a small area */
+        /* Loader specific to the title section */
+        #loader {
+            margin-top: 10px;
+            width: 50px;
+            height: 50px;
+            display: none; /* Hidden by default */
+            justify-content: center;
+            align-items: center;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        /* Red spinning circle */
+        #loader:after {
+            content: "";
+            width: 50px;
+            height: 50px;
+            border: 5px solid red;
+            border-top: 5px solid transparent;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        /* Keyframes for spinning animation */
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+            100% {
+                transform: rotate(360deg);
+            }
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="row mb-4">
-            <div class="col-sm text-start">
-                <small>Version 1.0</small>
+            <div class="col-sm text-start text-muted">
+                Version 1.1
             </div>
             <div class="col-sm text-center title">
                 Language Level Tool
+                <div id="loader" style="display: none;"></div>
             </div>
             <div class="col-sm text-end">
                 <img src="{{ url_for('static', filename='images/logo-gemeente-amsterdam.png') }}" style="width: 200px;" alt="Logo">
             </div>
         </div>
 
-        <form method="POST" action="/output">
+        <form method="POST" action="/output" onsubmit="showLoader()" enctype="multipart/form-data">
             <div class="row">
                 <div class="col-md-6">
                     <h4>Input</h4>
-                    <textarea id="text-input" name="text-input" placeholder="Enter text here..."></textarea>
-                    <input type="file" id="upload-file" class="form-control mb-3" accept=".txt,.doc,.docx" name="file">
+                    <textarea id="text-input" name="text-input" placeholder="Enter text here...">{{ request.form.get('text-input', '') }}</textarea>
+                    <input type="file" id="upload-file" class="form-control mt-3" accept=".txt,.doc,.docx" name="file">
+                    <small class="text-muted">Accepted formats: .txt, .docx</small>
                 </div>
                 <div class="col-md-6">
                     <h4>Suggestions</h4>
@@ -93,7 +138,11 @@
                             <ul id="suggestions-list">
                                 {% if suggestions %}
                                     {% for suggestion in suggestions %}
-                                        <li>{{ suggestion }}</li>
+                                    <li>
+                                        <div class="bubble" data-original="{{ suggestion.original }}" data-new="{{ suggestion.new }}" onclick="handleSuggestion('{{ suggestion.original }}', '{{ suggestion.new }}')">
+                                            <b>{{ suggestion.id }}.</b> "{{ suggestion.original }}" ➡️ "{{ suggestion.new }}"
+                                        </div> 
+                                    </li>                                                                
                                     {% endfor %}
                                 {% else %}
                                     <li>No suggestions yet. Enter some text or upload a file and click "Check now".</li>
@@ -101,9 +150,13 @@
                             </ul>
                         </div>
                     </div>
+                    <div class="button-wrapper mt-3">
+                        <button type="button" id="clear-input-button" class="btn btn-danger">Clear Input</button>
+                        <button type="button" id="apply-suggestions-button" class="btn btn-primary">Apply All Suggestions</button>
+                    </div>     
                 </div>
             </div>
-            <div class="row">
+            <div class="row mt-4">
                 <div class="col-md-6">
                     <div class="button-wrapper text-left">
                         <button type="submit" id="check-button">Check now</button>
@@ -119,25 +172,24 @@
                 </div>
             </div>
         </form>
-        
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.4.2/mammoth.browser.min.js"></script>
-
     <script>
+        // File upload handler
         document.getElementById('upload-file').addEventListener('change', function(event) {
             const file = event.target.files[0];
             if (file) {
                 const reader = new FileReader();
-                // Text file
+                // Handle plain text files
                 if (file.type === 'text/plain') {
                     reader.onload = function(e) {
                         document.getElementById('text-input').value = e.target.result;
                     };
                     reader.readAsText(file);
-                }
-                // Docx file
+                } 
+                // Handle .docx files
                 else if (file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
                     const readerDocx = new FileReader();
                     readerDocx.onload = function(e) {
@@ -151,9 +203,76 @@
                             });
                     };
                     readerDocx.readAsArrayBuffer(file);
+                } 
+                // Unsupported file type
+                else {
+                    alert('Unsupported file type. Please upload a .txt or .docx file.');
                 }
             }
         });
+
+        // Handle click on bubbles
+        function handleSuggestion(originalText, newText) {
+        const textArea = document.getElementById('text-input');
+        const currentText = textArea.value;
+
+        // Replace the first occurrence of the original text with the new text
+        const updatedText = currentText.replace(originalText, newText);
+        textArea.value = updatedText;
+    }
+
+    // Handle click on bubbles
+    function handleClick(id, newText) {
+        const textArea = document.getElementById('text-input');
+        textArea.value = newText; // Update textarea with the suggested text
+    }
+
+    function showLoader() {
+        const loader = document.getElementById('loader');
+        if (loader) {
+            loader.style.display = 'flex'; // Show the loader
+        }
+    }
+
+    window.addEventListener('load', function () {
+        const loader = document.getElementById('loader');
+        if (loader) {
+            loader.style.display = 'none'; // Hide the loader
+        }
+    });
+
+    // Clear input field with confirmation
+    document.getElementById('clear-input-button').addEventListener('click', function () {
+        const isConfirmed = confirm("Are you sure you want to clear the input? This action cannot be undone.");
+        if (isConfirmed) {
+            document.getElementById('text-input').value = ""; // Clear the textarea
+        }
+    });
+
+    // Apply all suggestions to the input field
+    document.getElementById('apply-suggestions-button').addEventListener('click', function () {
+    const textArea = document.getElementById('text-input');
+    const currentText = textArea.value;
+    const suggestions = document.querySelectorAll('.bubble'); // Select all suggestion elements
+
+    let updatedText = currentText;
+
+    // Loop through suggestions and apply them
+    suggestions.forEach((bubble) => {
+        const originalText = bubble.getAttribute('data-original');
+        const newText = bubble.getAttribute('data-new');
+
+        if (originalText && newText) {
+            // Replace all occurrences of the original text with the new text
+            const regex = new RegExp(originalText, 'g');
+            updatedText = updatedText.replace(regex, newText);
+        }
+    });
+
+    textArea.value = updatedText; // Update the textarea with all suggestions applied
+});
+
+
     </script>
 </body>
 </html>
