@@ -2,6 +2,8 @@ import pandas as pd
 from datasets import Dataset, load_dataset
 from setfit import SetFitModel, Trainer, TrainingArguments, sample_dataset
 import torch
+from evaluate import load
+import numpy as np
 
 # Step 1: Load the CSV dataset
 df = pd.read_csv("language_levels.csv")
@@ -21,14 +23,12 @@ model = SetFitModel.from_pretrained(
     labels=["A1", "A2", "B1", "B2", "C1", "C2"],
 )
 
-device = torch.device("cpu")  # Force using CPU
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")  # Force using CPU
 model.to(device)  # Move the model to the CPU
 
 # Step 5: Format your dataset
 # Ensure that your dataset contains 'text' and 'label' columns as expected by SetFit
 train_dataset = train_dataset.rename_column("text", "sentence")
-# train_dataset = train_dataset.rename_column("level_column_in_your_dataset", "label")
-
 test_dataset = test_dataset.rename_column("text", "sentence")
 # test_dataset = test_dataset.rename_column("level_column_in_your_dataset", "label")
 
@@ -44,30 +44,64 @@ args = TrainingArguments(
     load_best_model_at_end=True,
 )
 
-# Step 8: Initialize the Trainer
+
+# Step 8: Initialize the metrics (accuracy, precision, recall, f1)
+accuracy_metric = load("accuracy")
+precision_metric = load("precision", average="weighted")
+recall_metric = load("recall", average="weighted")
+f1_metric = load("f1", average="weighted")
+
+
+def is_lower_or_higher_than_B1(label):
+    label_to_num = {"A1": 0, "A2": 1, "B1": 2, "B2": 3, "C1": 4, "C2": 5}
+    return label < label_to_num["B1"]
+
+def custom_metric(y_pred, y_test):
+    accuracy = accuracy_metric.compute(predictions=y_pred, references=y_test)
+    precision = precision_metric.compute(predictions=y_pred, references=y_test, average="weighted")
+    recall = recall_metric.compute(predictions=y_pred, references=y_test, average="weighted")
+    f1 = f1_metric.compute(predictions=y_pred, references=y_test, average="weighted")
+    mae = np.mean(np.abs(np.array(y_pred) - np.array(y_test)))
+
+    # Calculate the accuracy of predicting if the level is lower or higher than B1
+    y_test_binary = [is_lower_or_higher_than_B1(label) for label in y_test]
+    y_pred_binary = [is_lower_or_higher_than_B1(label) for label in y_pred]
+    binary_accuracy = accuracy_metric.compute(predictions=y_pred_binary, references=y_test_binary)
+
+    return {
+        "accuracy": accuracy["accuracy"],
+        "precision": precision["precision"],
+        "recall": recall["recall"],
+        "f1": f1["f1"],
+        "mae": mae,
+        "binary_accuracy": binary_accuracy["accuracy"],
+    }
+
+
+# Step 9: Initialize the Trainer
 trainer = Trainer(
     model=model,
     args=args,
     train_dataset=train_dataset,
     eval_dataset=test_dataset,
-    metric="accuracy",  # Can be adjusted based on what metric you care about
+    metric=custom_metric,  # Can be adjusted based on what metric you care about
     column_mapping={"sentence": "text", "label": "label"},  # Ensure mapping is correct
 )
 
-# Step 9: Train the model
+# Step 10: Train the model
 trainer.train()
 
-# Step 10: Evaluate the model
+# Step 11: Evaluate the model
 metrics = trainer.evaluate(test_dataset)
 print(metrics)
 
-# Step 11: Save the model after training (optional)
+# Step 12: Save the model after training (optional)
 # trainer.save_model("language_level_model")
 # Save the trained model
 model.save_pretrained("language_level_model")
 
 
-# Step 12: Make predictions using the trained model
+# Step 13: Make predictions using the trained model
 def predict_language_level(texts):
     preds = model.predict(texts)
     return preds
