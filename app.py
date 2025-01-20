@@ -161,6 +161,8 @@ def output():
             except Exception as e:
                 return f"Error processing LLM response: {str(e)}", 500
 
+        return render_template("base.html", suggestions=[], language_level=predicted_levels[0])
+
     # Geen tekst ingevoerd of niets te verwerken
     return render_template("base.html", suggestions=[], language_level=None)
 
