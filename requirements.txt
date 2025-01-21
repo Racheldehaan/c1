@@ -1,0 +1,10 @@
+torch
+pandas
+flask
+transformers
+huggingface_hub
+datasets
+setfit
+llama-cpp-python
+evaluate
+numpy

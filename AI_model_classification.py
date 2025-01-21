@@ -56,17 +56,24 @@ def is_lower_or_higher_than_B1(label):
     label_to_num = {"A1": 0, "A2": 1, "B1": 2, "B2": 3, "C1": 4, "C2": 5}
     return label < label_to_num["B1"]
 
+
 def custom_metric(y_pred, y_test):
     accuracy = accuracy_metric.compute(predictions=y_pred, references=y_test)
-    precision = precision_metric.compute(predictions=y_pred, references=y_test, average="weighted")
-    recall = recall_metric.compute(predictions=y_pred, references=y_test, average="weighted")
+    precision = precision_metric.compute(
+        predictions=y_pred, references=y_test, average="weighted"
+    )
+    recall = recall_metric.compute(
+        predictions=y_pred, references=y_test, average="weighted"
+    )
     f1 = f1_metric.compute(predictions=y_pred, references=y_test, average="weighted")
     mae = np.mean(np.abs(np.array(y_pred) - np.array(y_test)))
 
     # Calculate the accuracy of predicting if the level is lower or higher than B1
     y_test_binary = [is_lower_or_higher_than_B1(label) for label in y_test]
     y_pred_binary = [is_lower_or_higher_than_B1(label) for label in y_pred]
-    binary_accuracy = accuracy_metric.compute(predictions=y_pred_binary, references=y_test_binary)
+    binary_accuracy = accuracy_metric.compute(
+        predictions=y_pred_binary, references=y_test_binary
+    )
 
     return {
         "accuracy": accuracy["accuracy"],

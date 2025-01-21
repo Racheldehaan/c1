@@ -12,8 +12,7 @@ from setfit import SetFitModel, Trainer, TrainingArguments, sample_dataset
 from llama_cpp import Llama
 
 app = Flask(
-    __name__,
-    template_folder=os.path.join(os.path.dirname(__file__), "templates")
+    __name__, template_folder=os.path.join(os.path.dirname(__file__), "templates")
 )
 
 app.config["DEBUG"] = True
@@ -86,6 +85,7 @@ messages = [
 def home():
     return render_template("base.html")
 
+
 @app.route("/output", methods=["POST"])
 def output():
     text_input = request.form.get("text-input")
@@ -100,7 +100,11 @@ def output():
             local_messages = [
                 {
                     "role": msg["role"],
-                    "content": msg["content"].replace("{text}", text_input) if "{text}" in msg["content"] else msg["content"]
+                    "content": (
+                        msg["content"].replace("{text}", text_input)
+                        if "{text}" in msg["content"]
+                        else msg["content"]
+                    ),
                 }
                 for msg in messages
             ]
@@ -120,8 +124,12 @@ def output():
                                     "items": {
                                         "type": "object",
                                         "properties": {
-                                            "zin uit de tekst die aangepast moet worden": {"type": "string"},
-                                            "wat het zou moeten worden": {"type": "string"},
+                                            "zin uit de tekst die aangepast moet worden": {
+                                                "type": "string"
+                                            },
+                                            "wat het zou moeten worden": {
+                                                "type": "string"
+                                            },
                                         },
                                         "required": [
                                             "zin uit de tekst die aangepast moet worden",
@@ -139,16 +147,16 @@ def output():
                     return "Error: No response from LLM model", 500
 
                 # Parse het resultaat
-                suggest = json.loads(completion['choices'][0]['message']['content'])
+                suggest = json.loads(completion["choices"][0]["message"]["content"])
 
                 # Format de suggesties
                 formatted_suggestions = [
                     {
                         "id": i,
                         "original": item["zin uit de tekst die aangepast moet worden"],
-                        "new": item["wat het zou moeten worden"]
+                        "new": item["wat het zou moeten worden"],
                     }
-                    for i, item in enumerate(suggest['suggesties'], start=1)
+                    for i, item in enumerate(suggest["suggesties"], start=1)
                 ]
 
                 # Render nieuwe suggesties
@@ -161,10 +169,13 @@ def output():
             except Exception as e:
                 return f"Error processing LLM response: {str(e)}", 500
 
-        return render_template("base.html", suggestions=[], language_level=predicted_levels[0])
+        return render_template(
+            "base.html", suggestions=[], language_level=predicted_levels[0]
+        )
 
     # Geen tekst ingevoerd of niets te verwerken
     return render_template("base.html", suggestions=[], language_level=None)
+
 
 if __name__ == "__main__":
     app.run(debug=True)
