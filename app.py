@@ -21,10 +21,10 @@ app.config["DEBUG"] = True
 model = SetFitModel.from_pretrained("language_level_model")
 
 # Select device: GPU if available, otherwise CPU
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 print(f"Using device: {device}")
 # device = torch.device("cpu")  # Force using CPU
-model.to(device)  # Move the model to the CPU
+model.to(device)  # Move the model 
 
 
 def predict_language_level(texts):
