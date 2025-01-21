@@ -65,7 +65,7 @@
                                 </li>
                                 {% endfor %}
                                 {% else %}
-                                <li>No suggestions yet. Enter some text or upload a file and click "Check now".</li>
+                                <li><b>No suggestions</b> <br> Please enter some text or upload a file and click 'Check now'. <br> Alternatively, text may already be <b>B2</b> or lower.</li>
                                 {% endif %}
                             </ul>
                         </div>
@@ -92,10 +92,6 @@
                     <div>
                         <h4>Language Level:</h4>
                         <p>{{ language_level }} ❌</p>
-                    </div>
-                    {% else %}
-                    <div id="text-to-short" style="display: none;">
-                        <p> Text to short, try a longer text. </p>
                     </div>
                     {% endif %}
                 </div>

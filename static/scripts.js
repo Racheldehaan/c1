@@ -1,8 +1,7 @@
 // Event Listeners for UI Interactions
 
-// Makes the message "Text too short, try a longer text" visible if applicable
+// Does nothing yet.
 document.getElementById('check-button').addEventListener('click', function () {
-    document.getElementById('text-to-short').style.display = 'block';
 });
 
 // Handle file uploads and process the content from .txt or .docx files
