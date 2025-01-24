@@ -13,7 +13,7 @@
     <div class="container">
         <div class="row mb-4">
             <div class="col-sm text-start text-muted">
-                Version 1.2
+                Version 1.3
             </div>
             <div class="col-sm text-center title">
                 Language Level Tool
@@ -54,27 +54,28 @@
                         <div id="suggestions-container">
                             <ul id="suggestions-list">
                                 {% if suggestions %}
-                                {% for suggestion in suggestions %}
-                                <li>
-                                    <div class="bubble" data-original="{{ suggestion.original }}"
-                                        data-new="{{ suggestion.new }}"
-                                        onclick="handleSuggestion('{{ suggestion.original }}', '{{ suggestion.new }}')">
-                                        <b>{{ suggestion.id }}.</b> "{{ suggestion.original }}" ➡️ "{{ suggestion.new
-                                        }}"
-                                    </div>
-                                </li>
-                                {% endfor %}
+                                    {% for suggestion in suggestions %}
+                                    <li>
+                                        <div class="bubble" data-original="{{ suggestion.original }}"
+                                            data-new="{{ suggestion.new }}"
+                                            onclick="handleSuggestion('{{ suggestion.original }}', '{{ suggestion.new }}', this)">
+                                            <b>{{ suggestion.id }}.</b> "{{ suggestion.original }}" ➡️ "{{ suggestion.new }}"
+                                        </div>
+                                    </li>
+                                    {% endfor %}
+                                {% elif language_level in ["A1", "A2", "B1"] %}
+                                    <li><b>No suggestions</b> <br> Text already at <b>{{ language_level }}</b> ✅.</li>
                                 {% else %}
-                                <li><b>No suggestions</b> <br> Please enter some text or upload a file and click 'Check now'. <br> Alternatively, text may already be <b>B2</b> or lower.</li>
+                                    <li><b>No suggestions</b> <br> Please enter some text or upload a file and click 'Check now'. 
                                 {% endif %}
-                            </ul>
+                            </ul>                            
                         </div>
                     </div>
                     <div class="button-wrapper mt-3" style="text-align: right;">
                         <button type="button" id="apply-suggestions-button" class="btn btn-primary">Apply All
                             Suggestions</button>
                     </div>
-                </div>
+                </div>                
             </div>
             <div class="row mt-4">
                 <div class="col-md-6">
@@ -83,12 +84,12 @@
                     </div>
                 </div>
                 <div id="language" class="col-md-6 d-flex justify-content-end align-items-center">
-                    {% if language_level in ['A1', 'A2', 'B1', 'B2'] %}
+                    {% if language_level in ['A1', 'A2', 'B1'] %}
                     <div>
                         <h4>Language Level:</h4>
                         <p>{{ language_level }} ✅</p>
                     </div>
-                    {% elif language_level in ['C1', 'C2'] %}
+                    {% elif language_level in ['B2', 'C1', 'C2'] %}
                     <div>
                         <h4>Language Level:</h4>
                         <p>{{ language_level }} ❌</p>

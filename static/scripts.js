@@ -1,7 +1,8 @@
 // Event Listeners for UI Interactions
 
-// Does nothing yet.
+// Tell user suggestions are loading
 document.getElementById('check-button').addEventListener('click', function () {
+    document.querySelector('.suggestion-section').innerHTML = '<b> Loading... </b>';
 });
 
 // Handle file uploads and process the content from .txt or .docx files
@@ -12,9 +13,8 @@ document.getElementById('clear-input-button').addEventListener('click', function
     const isConfirmed = confirm("Are you sure you want to clear the input? This action cannot be undone.");
     if (isConfirmed) {
         document.getElementById('text-input').value = ""; 
-        document.getElementById("suggestions-list").innerHTML = '<li>No suggestions yet. Enter some text or upload a file and click "Check now".</li>';
+        document.querySelector(".suggestion-section").innerHTML = "<b>No suggestions</b> <br> Please enter some text or upload a file and click 'Check now'.";
         document.getElementById("upload-file").value = "";
-        document.getElementById('text-to-short').style.display = 'none';
     }
 });
 
@@ -25,7 +25,7 @@ document.getElementById('apply-suggestions-button').addEventListener('click', ap
 window.addEventListener('load', function () {
     const loader = document.getElementById('loader');
     if (loader) {
-        loader.style.display = 'none'; // Ensure the loader is hidden after the page has finished loading
+        loader.style.display = 'none'; 
     }
 });
 
@@ -71,11 +71,16 @@ function handleFileUpload(event) {
  * @param {string} originalText 
  * @param {string} newText 
  */
-function handleSuggestion(originalText, newText) {
+// Apply a specific suggestion and remove the clicked bubble
+function handleSuggestion(originalText, newText, suggestion) {
     const textArea = document.getElementById('text-input');
     const currentText = textArea.value;
     const updatedText = currentText.replace(originalText, newText);
     textArea.value = updatedText;
+
+    if (suggestion) {
+        suggestion.remove();
+    }
 }
 
 // Apply all suggestions from the suggestion bubbles to the text area.
@@ -94,9 +99,12 @@ function applyAllSuggestions() {
             const regex = new RegExp(originalText, 'g');
             updatedText = updatedText.replace(regex, newText);
         }
+
+        bubble.remove();
     });
 
     textArea.value = updatedText;
+    document.querySelector('.suggestion-section').innerHTML = "<b>No suggestions</b> <br> All suggestions applied.";
 }
 
 // Display Loader

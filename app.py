@@ -21,11 +21,9 @@ app.config["DEBUG"] = True
 model = SetFitModel.from_pretrained("language_level_model")
 
 # Select device: GPU if available, otherwise CPU
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")  
+model.to(device)
 print(f"Using device: {device}")
-# device = torch.device("cpu")  # Force using CPU
-model.to(device)  # Move the model 
-
 
 def predict_language_level(texts):
     preds = model.predict(texts)
@@ -35,7 +33,8 @@ def predict_language_level(texts):
 llm = Llama.from_pretrained(
     repo_id="mradermacher/GEITje-7B-ultra-i1-GGUF",
     filename="GEITje-7B-ultra.i1-Q5_K_M.gguf",
-    n_ctx=32768,
+    n_ctx=2048*4,
+    n_gpu_layers=-1,
 )
 
 messages = [
@@ -89,14 +88,12 @@ def home():
 @app.route("/output", methods=["POST"])
 def output():
     text_input = request.form.get("text-input")
-    suggestions = []
 
     if text_input:
-        # Voer taalniveauvoorspelling uit
         predicted_levels = predict_language_level([text_input])
+        language_level = predicted_levels[0]
 
-        if predicted_levels[0] in ["B2", "C1", "C2"]:
-            # Kopieer de standaard berichten om wijzigingen te vermijden
+        if language_level in ["B2", "C1", "C2"]:
             local_messages = [
                 {
                     "role": msg["role"],
@@ -109,7 +106,6 @@ def output():
                 for msg in messages
             ]
 
-            # Voer de LLM aanroep uit
             try:
                 completion = llm.create_chat_completion(
                     messages=local_messages,
@@ -142,38 +138,37 @@ def output():
                     },
                 )
 
-                # Valideer of er een geldig antwoord is
-                if completion is None:
-                    return "Error: No response from LLM model", 500
-
-                # Parse het resultaat
                 suggest = json.loads(completion["choices"][0]["message"]["content"])
 
-                # Format de suggesties
-                formatted_suggestions = [
-                    {
-                        "id": i,
-                        "original": item["zin uit de tekst die aangepast moet worden"],
-                        "new": item["wat het zou moeten worden"],
-                    }
-                    for i, item in enumerate(suggest["suggesties"], start=1)
-                ]
+                if isinstance(suggest.get("suggesties"), list):
+                    formatted_suggestions = [
+                        {
+                            "id": i,
+                            "original": item["zin uit de tekst die aangepast moet worden"],
+                            "new": item["wat het zou moeten worden"],
+                        }
+                        for i, item in enumerate(suggest["suggesties"], start=1)
+                    ]
 
-                # Render nieuwe suggesties
-                return render_template(
-                    "base.html",
-                    suggestions=formatted_suggestions,
-                    language_level=predicted_levels[0],
-                )
+                    return render_template(
+                        "base.html",
+                        suggestions=formatted_suggestions,
+                        language_level=language_level,
+                    )
+                else:
+                    return "Error: Invalid response format from LLM model", 500
 
             except Exception as e:
                 return f"Error processing LLM response: {str(e)}", 500
 
-        return render_template(
-            "base.html", suggestions=[], language_level=predicted_levels[0]
-        )
+        elif language_level in ["A1", "A2", "B1"]:
+            return render_template(
+                "base.html", suggestions=[], language_level=language_level
+            )
 
-    # Geen tekst ingevoerd of niets te verwerken
+        else:
+            return f"Error processing LLM response: {str(e)}", 500
+
     return render_template("base.html", suggestions=[], language_level=None)
 
 
