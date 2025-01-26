@@ -7,7 +7,7 @@ import numpy as np
 import random
 
 # Set seeds
-SEED = 42
+SEED = 44
 random.seed(SEED)
 np.random.seed(SEED)
 torch.manual_seed(SEED)
@@ -111,7 +111,7 @@ def compare_models():
         "label": "label"
     }))
 
-    train_test = dataset.train_test_split(test_size=0.2, seed=SEED)
+    train_test = dataset.train_test_split(test_size=0.35, seed=SEED)
 
     # Compare models
     comparison_results = []

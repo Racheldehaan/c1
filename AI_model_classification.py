@@ -157,7 +157,7 @@ predicted_levels = predict_language_level(texts_to_predict)
 
 # Add this before training to understand your data distribution
 print("Class distribution:")
-print(df['label'].value_counts(normalize=True))
+print(df['label'].value_counts())
 
 # Print the predictions
 for text, level in zip(texts_to_predict, predicted_levels):
