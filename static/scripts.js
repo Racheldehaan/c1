@@ -8,6 +8,15 @@ document.getElementById('check-button').addEventListener('click', function () {
 // Handle file uploads and process the content from .txt or .docx files
 document.getElementById('upload-file').addEventListener('change', handleFileUpload);
 
+// Copy text
+document.getElementById('copy-button').addEventListener('click', function () {
+    const textInputValue = document.getElementById('text-input').value; 
+    if (textInputValue) {
+        navigator.clipboard.writeText(textInputValue) 
+        alert("Input copied to clipboard");
+    } 
+});
+
 // Clear the input field, uploaded file, and reset suggestions with user confirmation
 document.getElementById('clear-input-button').addEventListener('click', function () {
     const isConfirmed = confirm("Are you sure you want to clear the input? This action cannot be undone.");

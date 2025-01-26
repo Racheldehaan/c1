@@ -67,6 +67,10 @@ textarea {
 }
 
 /* Button Styles */
+.btn {
+    vertical-align: baseline; 
+}
+
 .button-wrapper {
     margin-top: 20px;
 }
