@@ -21,7 +21,7 @@ app.config["DEBUG"] = True
 model = SetFitModel.from_pretrained("language_level_model")
 
 # Select device: GPU if available, otherwise CPU
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")  
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 model.to(device)
 print(f"Using device: {device}")
 
@@ -32,9 +32,14 @@ def predict_language_level(texts):
 
 llm = Llama.from_pretrained(
     repo_id="mradermacher/GEITje-7B-ultra-i1-GGUF",
-    filename="GEITje-7B-ultra.i1-Q5_K_M.gguf",
-    n_ctx=2048*4,
-    n_gpu_layers=-1,
+    filename="GEITje-7B-ultra.i1-Q4_K_M.gguf",
+    n_threads_batch=8,
+    n_ctx=4096,  # Reduce from 32768
+    n_gpu_layers=30,  # Start with 30 layers for 8GB VRAM
+    n_threads=8,  # Match your 8-core CPU
+    n_batch=512,  # Optimal for GPU processing
+    offload_kqv=True,  # Offload attention layers to GPU
+    flash_attn=True
 )
 
 messages = [
@@ -110,6 +115,8 @@ def output():
                 completion = llm.create_chat_completion(
                     messages=local_messages,
                     temperature=0.4,
+                    top_p=0.9,       # Focus on high-probability tokens
+                    repeat_penalty=1.1,
                     response_format={
                         "type": "json_object",
                         "schema": {

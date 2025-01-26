@@ -19,7 +19,8 @@ test_dataset = train_test["test"]
 # Step 4: Load a SetFit model from Hub or a pre-trained model
 # You can also try any other model from: https://huggingface.co/models?library=sentence-transformers&language=nl&sort=downloads
 model = SetFitModel.from_pretrained(
-    "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",  # You can change this to a model that works well with your task
+    "pdelobelle/robbert-v2-dutch-base",
+    # "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",  # You can change this to a model that works well with your task
     labels=["A1", "A2", "B1", "B2", "C1", "C2"],
 )
 
@@ -52,12 +53,15 @@ recall_metric = load("recall", average="weighted")
 f1_metric = load("f1", average="weighted")
 
 
-def is_lower_or_higher_than_B1(label):
-    label_to_num = {"A1": 0, "A2": 1, "B1": 2, "B2": 3, "C1": 4, "C2": 5}
-    return label < label_to_num["B1"]
+label_to_num = {"A1": 0, "A2": 1, "B1": 2, "B2": 3, "C1": 4, "C2": 5}
+
+def is_checkmark(label):
+    """Determine if label qualifies for a checkmark (B1 or easier)"""
+    return label <= label_to_num["B1"]
 
 
 def custom_metric(y_pred, y_test):
+    # Original multiclass metrics
     accuracy = accuracy_metric.compute(predictions=y_pred, references=y_test)
     precision = precision_metric.compute(
         predictions=y_pred, references=y_test, average="weighted"
@@ -66,14 +70,26 @@ def custom_metric(y_pred, y_test):
         predictions=y_pred, references=y_test, average="weighted"
     )
     f1 = f1_metric.compute(predictions=y_pred, references=y_test, average="weighted")
-    mae = np.mean(np.abs(np.array(y_pred) - np.array(y_test)))
+    mae = float(np.mean(np.abs(np.array(y_pred) - np.array(y_test))))
 
-    # Calculate the accuracy of predicting if the level is lower or higher than B1
-    y_test_binary = [is_lower_or_higher_than_B1(label) for label in y_test]
-    y_pred_binary = [is_lower_or_higher_than_B1(label) for label in y_pred]
-    binary_accuracy = accuracy_metric.compute(
-        predictions=y_pred_binary, references=y_test_binary
-    )
+    # Checkmark-specific metrics
+    y_test_binary = [int(is_checkmark(label)) for label in y_test]
+    y_pred_binary = [int(is_checkmark(label)) for label in y_pred]
+
+    checkmark_metrics = {
+        "checkmark_accuracy": accuracy_metric.compute(
+            predictions=y_pred_binary, references=y_test_binary
+        )["accuracy"],
+        "checkmark_precision": precision_metric.compute(
+            predictions=y_pred_binary, references=y_test_binary, average="binary", pos_label=1
+        )["precision"],
+        "checkmark_recall": recall_metric.compute(
+            predictions=y_pred_binary, references=y_test_binary, average="binary", pos_label=1
+        )["recall"],
+        "checkmark_f1": f1_metric.compute(
+            predictions=y_pred_binary, references=y_test_binary, average="binary", pos_label=1
+        )["f1"],
+    }
 
     return {
         "accuracy": accuracy["accuracy"],
@@ -81,7 +97,7 @@ def custom_metric(y_pred, y_test):
         "recall": recall["recall"],
         "f1": f1["f1"],
         "mae": mae,
-        "binary_accuracy": binary_accuracy["accuracy"],
+        **checkmark_metrics
     }
 
 
@@ -138,6 +154,10 @@ texts_to_predict = [
 
 
 predicted_levels = predict_language_level(texts_to_predict)
+
+# Add this before training to understand your data distribution
+print("Class distribution:")
+print(df['label'].value_counts(normalize=True))
 
 # Print the predictions
 for text, level in zip(texts_to_predict, predicted_levels):
