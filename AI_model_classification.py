@@ -12,14 +12,14 @@ df = pd.read_csv("language_levels.csv")
 dataset = Dataset.from_pandas(df)
 
 # Step 3: Split the dataset into train and test sets
-train_test = dataset.train_test_split(test_size=0.2)
+train_test = dataset.train_test_split(test_size=0.1)
 train_dataset = train_test["train"]
 test_dataset = train_test["test"]
 
 # Step 4: Load a SetFit model from Hub or a pre-trained model
 # You can also try any other model from: https://huggingface.co/models?library=sentence-transformers&language=nl&sort=downloads
 model = SetFitModel.from_pretrained(
-    "pdelobelle/robbert-v2-dutch-base",
+    "jegormeister/robbert-v2-dutch-base-mqa-finetuned",
     # "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",  # You can change this to a model that works well with your task
     labels=["A1", "A2", "B1", "B2", "C1", "C2"],
 )

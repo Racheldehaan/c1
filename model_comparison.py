@@ -20,7 +20,7 @@ MODELS_TO_COMPARE = [
     },
     {
         "name": "dutch-robbert",
-        "pretrained": "pdelobelle/robbert-v2-dutch-base"
+        "pretrained": "jegormeister/robbert-v2-dutch-base-mqa-finetuned"
     }
 ]
 

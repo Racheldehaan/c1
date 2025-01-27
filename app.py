@@ -33,26 +33,37 @@ def predict_language_level(texts):
 llm = Llama.from_pretrained(
     repo_id="mradermacher/GEITje-7B-ultra-i1-GGUF",
     filename="GEITje-7B-ultra.i1-Q4_K_M.gguf",
-    n_threads_batch=8,
+    # n_threads_batch=8,
     n_ctx=4096,  # Reduce from 32768
-    n_gpu_layers=30,  # Start with 30 layers for 8GB VRAM
+    n_gpu_layers=43,  # Start with 30 layers for 8GB VRAM
     n_threads=8,  # Match your 8-core CPU
-    n_batch=512,  # Optimal for GPU processing
-    offload_kqv=True,  # Offload attention layers to GPU
+    n_batch=256,  # Optimal for GPU processing
+    offload_kqv=False,  # Offload attention layers to GPU
     flash_attn=True
 )
+
+# llm = Llama.from_pretrained(
+#     repo_id="mradermacher/GEITje-7B-ultra-i1-GGUF",
+#     filename="GEITje-7B-ultra.i1-Q4_K_M.gguf",
+#     n_threads_batch=8,
+#     n_ctx=4096,  # Reduce from 32768
+#     n_gpu_layers=30,  # Start with 30 layers for 8GB VRAM
+#     n_threads=8,  # Match your 8-core CPU
+#     n_batch=512,  # Optimal for GPU processing
+#     offload_kqv=True,  # Offload attention layers to GPU
+#     flash_attn=True
+# )
 
 messages = [
     {
         "role": "system",
         "content": """
-            Jij bent een expert in de Nederlandse taal en geeft alleen antwoord in json format zonder extra uitleg erbij. Dit is wat je weet over taalniveaus in het Nederlands op volgorde van makkelijk naar moeilijk plus een uitleg:
-            A1: Iemand die (alleen) taalniveau A1 begrijpt en spreekt, is een beginnend taalgebruiker. Hij begrijpt eenvoudige woorden en namen en heel korte zinnen.
-            A2: A2 is ook heel eenvoudig. Maar de zinnen zijn al iets langer. Iemand met dit niveau begrijpt de boodschap van korte, eenvoudige teksten. Die teksten moeten duidelijk zijn en gaan over de eigen omgeving. Als je schrijft voor laaggeletterden, is dit niveau geschikt.
-            B1: Het niveau dat de meeste Nederlanders begrijpen. B1 draait om eenvoudige en duidelijke taal. Mensen met dit taalniveau begrijpen de meeste teksten die over veelvoorkomende onderwerpen gaan. Het lijkt een beetje op spreektaal. Een van de kenmerken van taalniveau B1 en de onderliggende niveaus, is een duidelijke tekststructuur.
-            B2: Iemand die taalniveau B2 begrijpt, snapt ingewikkeldere teksten. Al helemaal als het gaat over een (wat moeilijker) onderwerp dat hij in zijn eigen beroep of interessegebied tegenkomt.
-            C1: Heeft iemand taalniveau C1, dan begrijpt hij moeilijke, lange teksten, ook als die abstract (vaag) zijn. Hij begrijpt vaktaal, uitdrukkingen, ouderwetse woorden en moeilijke woorden. En hij kan taal zelf goed inzetten om iets uit te leggen.
-            C2: Dit is de moeilijkste van alle taalniveaus. Iemand die C2 begrijpt, begrijpt eigenlijk alles wat in het Nederlands wordt gezegd of geschreven.
+            Jij bent een juridisch taalexpert. Vereenvoudig juridische teksten naar B1-niveau MET BEHOUD VAN:
+            1. Originele aanspreekvorm (u/uw blijft u/uw)
+            2. Exacte volgorde van zinnen en alinea's
+            3. Alle juridische verwijzingen en artikelnummers
+            4. Specifieke feiten en claims
+            5. Formele toon
 
             Geef het antwoord in het volgende formaat:
             {"suggesties" : None als er geen suggesties zijn, anders een lijst met minimaal lengte 1 en geen maximale lengte met de suggesties in het volgende formaat: [
@@ -77,10 +88,12 @@ messages = [
     {
         "role": "user",
         "content": """
-        Deze tekst heeft een moeilijker taalniveau dan B1, geef suggesties zodat het taalniveau B1 wordt:
+        Vereenvoudig onderstaande juridische tekst naar B1-niveau. Behoud alle juridische verwijzingen en artikelnummers en zorg dat het formeel blijft.
+        Voeg waar nodig korte verduidelijkingen toe tussen haakjes. Splits zinnen niet.
 
+        Tekst:
         {text}
-        """,
+        """
     },
 ]
 
@@ -114,8 +127,8 @@ def output():
             try:
                 completion = llm.create_chat_completion(
                     messages=local_messages,
-                    temperature=0.4,
-                    top_p=0.9,       # Focus on high-probability tokens
+                    temperature=0.5,
+                    # top_p=0.9,       # Focus on high-probability tokens
                     repeat_penalty=1.1,
                     response_format={
                         "type": "json_object",
